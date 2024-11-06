@@ -1,38 +1,36 @@
 <script lang="ts">
 	import { translate } from '$lib/translate';
-	import { LocalStorageSettingsService } from '../adapters/LocalStorageSettingsService';
 	import Button from '../components/Button.svelte';
 	import LanguageSelector, { type Language } from '../components/LanguageSelector.svelte';
 	import Settings from '../components/Settings.svelte';
 	import Subtitle from '../components/Subtitle.svelte';
 	import Textarea from '../components/Textarea.svelte';
-	import { DEFAULT_SETTINGS, type Settings as SettingsType } from '../ports/settingsService';
+	import { useSettings } from '../hooks/useSettings.svelte';
+
+	const {settings, saveSettings} = useSettings();
+	let displaySettings = $state(false);
+	const toggleDisplaySettings = () => (displaySettings = !displaySettings);
 
 	const Steps = {
 		InitTranslation: 'INIT',
 		TranslationResult: 'RESULT'
 	};
-	let step: (typeof Steps)[keyof typeof Steps] = $state(Steps.InitTranslation);
-	let textToTranslate: string = $state('');
-	let translatedText: string = $state('');
+	let step = $state(Steps.InitTranslation);
+
+	let textToTranslate = $state('');
+	let translatedText = $state('');
 	let selectedLanguage: Language | null = $state(null);
+	let isComplete = $derived(textToTranslate && selectedLanguage);
+	
 	let isLoading = $state(false);
-	const settingsService = new LocalStorageSettingsService();
-	let settings: SettingsType = $state(DEFAULT_SETTINGS);
-	$effect(() => {
-		if (window) {
-			settings = settingsService.getSettings();
-		}
-	})
-	$inspect(settings);
 	const handleClickTranslate = async () => {
 		isLoading = true;
 		try {
-			if (textToTranslate && selectedLanguage) {
+			if (isComplete) {
 				translatedText = await translate({
 					text: textToTranslate,
-					language: selectedLanguage.label,
-					apiKey: settings.openAiApiKey
+					language: selectedLanguage!.label,
+					apiKey: settings.value.openAiApiKey
 				}) || '';
 				step = Steps.TranslationResult;
 			} else {
@@ -45,15 +43,14 @@
 		}
 	};
 
+	let isTranslateButtonDisabled = $derived(!isComplete || isLoading);
+
 	const handleClickStartOver = () => {
 		step = Steps.InitTranslation;
 		textToTranslate = '';
 		translatedText = '';
 		selectedLanguage = null;
 	};
-
-	let displaySettings = $state(false);
-	const toggleDisplaySettings = () => (displaySettings = !displaySettings);
 </script>
 
 <header class="flex h-80 items-center justify-center space-x-4 bg-[#0D182E]">
@@ -73,12 +70,12 @@
 			</button>
 		</div>
 		{#if displaySettings}
-			<Settings bind:value={settings} />
+			<Settings value={settings.value} onSave={saveSettings} />
 		{:else if step === Steps.InitTranslation}
 			<Subtitle>Text to translate 👇</Subtitle>
 			<Textarea placeholder="How are you ?" bind:value={textToTranslate} />
 			<LanguageSelector bind:value={selectedLanguage} />
-			<Button disabled={isLoading} onClick={handleClickTranslate}>Translate</Button>
+			<Button disabled={isTranslateButtonDisabled} onClick={handleClickTranslate}>Translate</Button>
 		{:else if step === Steps.TranslationResult}
 			<Subtitle>Original text 👇</Subtitle>
 			<Textarea readonly value={textToTranslate} />

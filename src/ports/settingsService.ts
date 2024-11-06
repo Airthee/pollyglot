@@ -1,11 +1,9 @@
-export const DEFAULT_SETTINGS: Settings = Object.freeze({
+export const DEFAULT_SETTINGS = Object.freeze({
     openAiApiKey: '',
 })
 
 
-export type Settings = {
-    openAiApiKey: string;
-}
+export type Settings = typeof DEFAULT_SETTINGS;
 
 export interface SettingsServiceInterface {
     getSettings(): Settings;

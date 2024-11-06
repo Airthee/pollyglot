@@ -5,24 +5,16 @@
 
     type Props = {
         value: Settings;
+        onSave(updatedSettings: Settings): void;
     }
-    
     let {
-        value = $bindable()
+        value: initialSettings,
+        onSave
     }: Props = $props();
 
-	const settingsService = new LocalStorageSettingsService();
-	$effect(() => {
-        console.log('Trying to load settings');
-		if(window) {
-            value = settingsService.getSettings();
-            console.log('Settings loaded');
-		}
-	})
+    const internalSettings = $state({...initialSettings});
 	const handleClickSaveSettings = () => {
-        if (value) {
-            settingsService.saveSettings(value);
-        }
+        onSave({...internalSettings});
 	}
 </script>
 
@@ -33,7 +25,7 @@
             id="input-openapi-api-key"
             placeholder="OpenAPI API key"
             type="password"
-            bind:value={value.openAiApiKey}
+            bind:value={internalSettings.openAiApiKey}
         />
     </div>
     <Button onClick={handleClickSaveSettings}>Save settings</Button>
