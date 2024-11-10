@@ -1,56 +1,62 @@
 <script lang="ts">
 	import { translate } from '$lib/translate';
-	import Button from '../components/Button.svelte';
-	import LanguageSelector, { type Language } from '../components/LanguageSelector.svelte';
+	import type { ConversationMessage } from '../components/Conversation.svelte';
+	import Conversation from '../components/Conversation.svelte';
+	import LanguageSelectorV2, { type Language } from '../components/LanguageSelector.svelte';
 	import Settings from '../components/Settings.svelte';
-	import Subtitle from '../components/Subtitle.svelte';
-	import Textarea from '../components/Textarea.svelte';
 	import { useSettings } from '../hooks/useSettings.svelte';
 
 	const {settings, saveSettings} = useSettings();
 	let displaySettings = $state(false);
 	const toggleDisplaySettings = () => (displaySettings = !displaySettings);
 
-	const Steps = {
-		InitTranslation: 'INIT',
-		TranslationResult: 'RESULT'
-	};
-	let step = $state(Steps.InitTranslation);
-
 	let textToTranslate = $state('');
-	let translatedText = $state('');
-	let selectedLanguage: Language | null = $state(null);
-	let isComplete = $derived(textToTranslate && selectedLanguage);
+	let selectedLanguage: Language | undefined = $state();
+
+	const messages: ConversationMessage[] = $state([
+		{
+			type: 'received',
+			message: 'Select the language you want me to translate into, type your text and hit send!'
+		}
+	])
 	
 	let isLoading = $state(false);
-	const handleClickTranslate = async () => {
+	const handleSubmit = async (event: SubmitEvent) => {
+		event.preventDefault();
+
+		if (!textToTranslate) {
+			return;
+		}
 		isLoading = true;
+
+		const textToTranslateCopy = textToTranslate;
+		textToTranslate = '';
+		messages.push({
+			type: 'sent',
+			message: textToTranslateCopy
+		})
+		
 		try {
-			if (isComplete) {
-				translatedText = await translate({
-					text: textToTranslate,
-					language: selectedLanguage!.label,
-					apiKey: settings.value.openAiApiKey
-				}) || '';
-				step = Steps.TranslationResult;
-			} else {
-				console.error('Missing parameter');
-			}
-		} catch(error) {
-			console.error(error);
+			const translatedText = await translate({
+				text: textToTranslateCopy,
+				language: selectedLanguage!.label,
+				apiKey: settings.value.openAiApiKey
+			}) || '';
+			messages.push({
+				type: 'received',
+				message: translatedText
+			})
+		} catch(error: any) {
+			messages.push({
+				type: 'received',
+				message: `An error occured : ${error.message}`
+			})
 		} finally {
 			isLoading = false;
 		}
 	};
 
-	let isTranslateButtonDisabled = $derived(!isComplete || isLoading);
-
-	const handleClickStartOver = () => {
-		step = Steps.InitTranslation;
-		textToTranslate = '';
-		translatedText = '';
-		selectedLanguage = null;
-	};
+	const canSend = $derived(!isLoading && selectedLanguage != null && textToTranslate !== '');
 </script>
 
 <header class="flex h-80 items-center justify-center space-x-4 bg-[#0D182E]">
@@ -71,17 +77,23 @@
 		</div>
 		{#if displaySettings}
 			<Settings value={settings.value} onSave={saveSettings} />
-		{:else if step === Steps.InitTranslation}
-			<Subtitle>Text to translate 👇</Subtitle>
-			<Textarea placeholder="How are you ?" bind:value={textToTranslate} />
-			<LanguageSelector bind:value={selectedLanguage} />
-			<Button disabled={isTranslateButtonDisabled} onClick={handleClickTranslate}>Translate</Button>
-		{:else if step === Steps.TranslationResult}
-			<Subtitle>Original text 👇</Subtitle>
-			<Textarea readonly value={textToTranslate} />
-			<Subtitle>Your translation 👇</Subtitle>
-			<Textarea readonly value={translatedText} />
-			<Button onClick={handleClickStartOver}>Start Over</Button>
+		{:else}
+			<Conversation messages={messages} />
+			<form onsubmit={handleSubmit}>
+				<div class="flex flex-col space-y-6">
+					<div class="relative">
+						<input
+							class="bg-[#EFF0F4] px-2.5 py-3 text-xl font-semibold w-full pr-9 rounded-lg border-black border-2"
+							type="text"
+							bind:value={textToTranslate}
+						/>
+						<button type="submit" class="absolute right-2 translate-y-1/2 disabled:grayscale" disabled={!canSend}>
+							<img src="/images/send-button.svg" alt="Sending icon">
+						</button>
+					</div>
+					<LanguageSelectorV2 bind:value={selectedLanguage} />
+				</div>
+			</form>
 		{/if}
 	</div>
 </main>

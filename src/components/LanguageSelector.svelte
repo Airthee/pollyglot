@@ -3,15 +3,11 @@
 </script>
 
 <script lang="ts">
-	import Subtitle from './Subtitle.svelte';
-
     type Props = {
-        value: Language | null;
+        value?: Language;
     }
 
-    let { value = $bindable() }: Props = $props();
-
-	const languages: Language[] = [
+	const availableLanguages: Language[] = [
 		{
 			label: 'French',
 			image: '/images/french.png',
@@ -28,27 +24,17 @@
 			value: 'japanese'
 		}
 	];
-    let selectedLanguage: Language['value'] | null = $state(value?.value || null);
-    $effect(() => {
-        value = languages.find((l) => l.value === selectedLanguage) || null;
-    })
+
+    let { value: selectedLanguage = $bindable() }: Props = $props();
+	function handleClickLanguage(language: Language) {
+		selectedLanguage = language;
+	}
 </script>
 
-<Subtitle>Select language 👇</Subtitle>
-{#each languages as language}
-	<div class="flex flex-row items-center space-x-2 text-xl font-bold">
-		<input
-			type="radio"
-			id="input-language-{language.value}"
-			name="language"
-			value={language.value}
-			bind:group={selectedLanguage}
-		/>
-		<label for="input-language-{language.value}" class="flex flex-row items-center space-x-2">
-			<span>{language.label}</span>
-			<div class="border-grey border-2">
-				<img class="h-5" src={language.image} alt="{language.label} flag" />
-			</div>
-		</label>
-	</div>
-{/each}
+<div class="flex flex-row justify-evenly">
+	{#each availableLanguages as language}
+		<button type="button" class="border-grey border-2 {language.value === selectedLanguage?.value ? 'border-2 border-black' : '' }" onclick={() => handleClickLanguage(language)}>
+			<img class="h-10" src={language.image} alt="{language.label} flag" />
+		</button>
+	{/each}
+</div>
