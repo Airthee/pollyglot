@@ -1,22 +1,23 @@
-import OpenAI from "openai";
+import axios from 'axios';
 
-const SYSTEM_PROMPT = `You are an expert translator. You receive the following format : "${formatPrompt('[text]', '[language]')}" and you return only the translated text into the given language.`;
+type TranslateResponseBody = {
+	success: boolean;
+	result?: string;
+	error?: string;
+};
 
-function formatPrompt(text: string, language: string) {
-    return `${language} ### ${text}`
-}
+export async function translate({
+	text,
+	language
+}: {
+	text: string;
+	language: string;
+	apiKey: string;
+}) {
+	const { data } = await axios.post<TranslateResponseBody>('https://openai-worker-453486414663.europe-west9.run.app', {
+		text,
+		language
+	});
 
-export async function translate({text, language, apiKey}: {text: string, language: string, apiKey: string}) {
-    const openai = new OpenAI({
-        dangerouslyAllowBrowser: true,
-        apiKey
-    });
-    const message = formatPrompt(text, language);
-    
-    const completion = await openai.chat.completions.create({
-        messages: [{ role: "system", content: SYSTEM_PROMPT }, {role: 'user', content: message}],
-        model: "gpt-4",
-    });
-
-    return completion.choices[0].message.content;
+	return data.result;
 }
