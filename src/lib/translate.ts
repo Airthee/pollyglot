@@ -12,7 +12,6 @@ export async function translate({
 }: {
 	text: string;
 	language: string;
-	apiKey: string;
 }) {
 	const { data } = await axios.post<TranslateResponseBody>('https://openai-worker-453486414663.europe-west9.run.app', {
 		text,
